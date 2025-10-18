@@ -361,12 +361,6 @@ F.l[j, i] = 1e-6  # Small non-zero initial guess for all flows
 # You need a non-zero value for the total flow in Stream 6.
 # Use the fixed production target (22.5085 kmol/hr, assuming calculation is correct)
 
-# # Set the flow of NH3 in stream 6 to the target value (best guess)
-F.lo[6, 'NH3'] = NH3_molar_production 
-
-# # Set the flow of H2O in stream 6 (the main impurity) to a small, non-zero value (e.g., 0.5% of the NH3 flow)
-F.lo[6, 'H2O'] = F.l[6, 'NH3'] * 0.005
-
 # # Set initial recovery variables to a non-zero, plausible value (e.g., 0.5)
 # NH3_recovery.lo[...] = 0.1
 # NH3_recovery.up[...] = 1.0
@@ -412,4 +406,8 @@ HB_Process_Model = Model(
 # Solve the Model
 print(HB_Process_Model.solve())
 # Display results
+
+pd.set_option('display.max_rows', None)     # Display all rows
+pd.set_option('display.max_columns', None)  # Display all columns
+pd.set_option('display.width', None)        # Allow output to be wider
 print(F.records)

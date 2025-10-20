@@ -1,0 +1,4 @@
+#!/bin/sh
+"${5}gmssb_ux.out" "$4"
+[ $? = 0 ] || echo "ERROR: Solver exitcode nonzero: $?" 1>&2
+exit 11

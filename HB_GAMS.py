@@ -17,9 +17,9 @@ i = Set(
         'H2O',
         'O',
         'N',
-        'Ar',
         'CO2',
-        'NH3'
+        'NH3',
+        'Ar',
     ],
     description="Involved chemical components"
 )
@@ -69,17 +69,14 @@ yHfeed = Parameter(
         ('H', 0.999070),
         ('H2O', 0.000860),
         ('O', 0.000070),
-        # ('N', 0.0),
-        # ('Ar', 0.0),
-        # ('CO2', 0.0),
-        # ('NH3', 0.0)
+        ('N', 0.0),
+        ('Ar', 0.0),
+        ('CO2', 0.0),
+        ('NH3', 0.0)
     ],
     description="Molar fraction of components in fresh H2 feed"
 )
 
-for component in i.records:
-    if component not in [record[0] for record in yHfeed.records]:
-        yHfeed.records.append((component, 0.0))
 
 yNfeed = Parameter(
     container=m,
@@ -96,6 +93,16 @@ yNfeed = Parameter(
     ],
     description="Molar fraction of components in fresh N2 feed"
 )
+
+def null_comp_check(param, i):
+    for component in i.records.iloc[:, 0]:
+        if component not in [record[0] for record in param.records]:
+            param.records.loc[len(param.records)] = [component, 0.0]
+    print(param.records)
+    return param
+
+null_comp_check(yHfeed, i)
+null_comp_check(yNfeed, i)
 
 TotalFlow1 = Variable(
                       container=m,

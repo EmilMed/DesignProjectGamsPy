@@ -1,0 +1,94 @@
+*
+* optsbb.def
+*
+
+reslim double 0 1000 0 maxdouble 0 1 resource limit
+iterlim integer 0 10000 0 maxint 0 1 iteration limit
+domlim integer 0 0 0 maxint 0 1 domain violation limit
+nodlim integer 0 100 0 maxint 0 1 node limit
+tryint double 0 0 0 maxdouble 0 1 tryint tolerance
+optca double 0 0 0 maxdouble 0 1 absolute stopping tolerance
+optcr double 0 0.1 0 maxdouble 0 1 relative stopping tolerance
+cheat double 0 0 0 maxdouble 0 1 overrides GAMS Cheat parameter
+cutoff double 0 0 0 maxdouble 0 1 cutoff for tree search
+sysout boolean 0 0 0 1 system output
+rootsolver string 0 "" 1 1 solver for the root node
+subsolver string 0 "" 1 1 solver for the subproblems
+loginterval integer 0 1 0 maxint 1 1 progress display interval
+loglevel enumint 0 1 1 1 level of solver display
+ 0 1 only SBB log lines with one line every loginterval nodes
+ 1 1 NLP solver log for the root node plus SBB loglines as 0
+ 2 1 NLP solver log for all nodes plus SBB log lines as 0
+subres double 0 0.0 0.0 maxdouble 1 1 resource limit for the subsolve
+subiter integer 0 0 0 maxint 1 1 iteration limit for the subsolve
+failseq string 0 "" 1 1 solver sequence for failed nodes
+infeasseq string 0 "" 1 1 solver sequence for infeasible nodes
+acceptnonopt boolean 0 0 1 1 accepts feasible solution from subsolver
+avgresmult integer 0 5 -1 maxint 1 1 average resource multiplicator
+nodesel enumint 0 0 1 1 node selection strategy
+ 0 1 automatic
+ 1 1 Depth First Search (DFS)
+ 2 1 Best Bound (BB)
+ 3 1 Best Estimate (BE)
+ 4 1 DFS/BB mix
+ 5 1 DFS/BE mix
+ 6 1 DFS/BB/BE mix
+dfsstay integer 0 0 0 maxint 1 1 keeps DFS node selection after solution has been found
+varsel enumint 0 0 1 1 variable selection strategy at each node
+ 0 1 automatic
+ 1 1 maximum integer infeasibility
+ 2 1 minimum integer infeasibility
+ 3 1 pseudo costs
+epint double 0 1.0e-5 1e-9 1 1 1 integer feasibility tolerance
+memnodes integer 0 10000 0 maxint 1 1 maximum number of nodes in memory
+printbbinfo enumint 0 0 1 1 prints additional node info
+ 0 1 print no additional info
+ 1 1 print variable selection letter
+ 2 1 print best estimate
+intsollim integer 0 2100000000 1 2100000000 1 1 maximum number of integer solutions
+usercallparmfile string 0 "" 1 1 Command-line parameter include file used in GAMS command-line calls triggered by BCH
+userheurcall string 0 "" 1 1 the GAMS command line to call the heuristic
+usergdxname string 0 "bchout.gdx" 1 1 the name of the GDX file exported from the solver with the solution at the node
+usergdxnameinc string 0 "bchout_i.gdx" 1 1 the name of the GDX file exported from the solver with the incumbent solution
+userheurfreq integer 0 10 0 maxint 1 1 determines the frequency of the cut generator model calls
+userheurinterval integer 0 100 0 maxint 1 1 determines the interval when to apply the multiplier for the frequency of the cut generator model calls
+userheurmult integer 0 2 0 maxint 1 1 determines the multiplier for the frequency of the cut generator model calls
+userheurfirst integer 0 10 0 maxint 1 1 calls the cut generator for the first n nodes
+userheurobjfirst integer 0 50 0 maxint 1 1 Similar to UserHeurFirst but only calls the heuristic if the relaxed objective promises an improvement
+userheurnewint boolean 0 0 1 1 calls the heuristic if the solver found a new integer feasible solution
+miptrace string 0 "" 1 1 filename of MIP trace file
+miptracenode integer 0 100 1 maxint 1 1 node interval when a trace record is written
+miptracetime double 0 5.0 1e-5 maxdouble 1 1 time interval when a trace record is written
+bbdfsmult double 0 3.0 1e-5 maxdouble 0 1 best-bound to dfs switch option
+ninfmult double 0 3.0 1e-5 maxdouble 0 1 best-bound to dfs switch option
+rgapmult double 0 0.9 1e-5 maxdouble 0 1 best-bound to dfs switch option
+debuglevel integer 0 0 0 maxint 0 1 level of debug information printed
+finalsolver string 0 "" 0 1 solver for the final solve
+solvelink enumint 0 5 1 1 Solvelink for GAMS NLP solver
+ 1 1 Call GAMS NLP solver via script
+ 2 1 Call GAMS NLP solver via module
+ 4 0 Call NLP and MIP solver via grid script (simulate)
+ 5 1 Call GAMS NLP solver in memory
+stopnode integer 0 0 0 maxint 0 1 node number where SBB will stop with solving node
+stopexclnode integer 0 0 0 maxint 0 1 node number where SBB will stop without solving node
+printrootiter boolean 0 0 0 1 prints the iterations at node 0
+bemult double 0 1.0 1e-5 maxdouble 0 1 best estimate stuff
+beover double 0 0.5 1e-5 maxdouble 0 1 best estimate stuff
+beunder double 0 0.5 1e-5 maxdouble 0 1 best estimate stuff
+lowbbcnt integer 0 10 0 maxint 0 1 best estimate stuff
+medbecnt integer 0 1 0 maxint 0 1 best estimate stuff
+highbecnt integer 0 10 0 maxint 0 1 best estimate stuff
+printvar boolean 0 0 0 1 prints branching variable number
+strict boolean 0 0 0 1 with strict enabled SBB terminates on minor problems
+gdxout string 0 "" 0 1 name stem of solution GDX files
+nobounds immediate nobounds 0 1 ignores bounds on options
+readfile immediate readfile 0 1 read secondary option file
+*
+* indicator section
+*
+*
+* Groups
+* <group-ident> group <group-number <help-context> <help-text>
+*
+general group 1 1 General Options
+*** End of file

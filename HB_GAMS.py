@@ -2,8 +2,6 @@ from gamspy import (Container, Set, Parameter, Variable,
                     Equation, Model, Sense, Problem, Sum)
 import pandas as pd
 
-import numpy as np
-
 # Define model container
 m = Container()
 
@@ -63,7 +61,6 @@ F = Variable(
 # ===============================================================================#
 #                               || Crossover 1 ||
 # ===============================================================================#
-
 yHfeed = Parameter(
     container=m,
     name='yHfeed',
@@ -72,13 +69,17 @@ yHfeed = Parameter(
         ('H', 0.999070),
         ('H2O', 0.000860),
         ('O', 0.000070),
-        ('N', 0.0),
-        ('Ar', 0.0),
-        ('CO2', 0.0),
-        ('NH3', 0.0)
+        # ('N', 0.0),
+        # ('Ar', 0.0),
+        # ('CO2', 0.0),
+        # ('NH3', 0.0)
     ],
     description="Molar fraction of components in fresh H2 feed"
 )
+
+for component in i.records:
+    if component not in [record[0] for record in yHfeed.records]:
+        yHfeed.records.append((component, 0.0))
 
 yNfeed = Parameter(
     container=m,
@@ -304,7 +305,7 @@ Soluble_Gas_Flow = Equation(
     description="Gases soluble present in trace liquid phase"
 )
 Soluble_Gas_Flow[soluble_gases_only] = F[6, soluble_gases_only] \
-                                       == 0.999*F[5, soluble_gases_only]
+                                       == (1-0.98)*F[5, soluble_gases_only]
 
 
 H2O_recovery = Parameter(
@@ -386,10 +387,10 @@ MT_Split_def[i] = F[10, i] == split_ure * F[6, i]
 
 NH3_required_py = 46000  # ton/yr
 NH3_MR = 17.031  # g/mol
-Years_operated = 15  # yr
 hours_per_year = 8000  # hr/yr
 
-NH3_mass_production = NH3_required_py * 1e3 / (Years_operated*hours_per_year)  # kg/yr
+NH3_mass_production = NH3_required_py * 1e3 \
+                       / (hours_per_year)  # kg/yr
 NH3_molar_production = NH3_mass_production / NH3_MR  # kmol/yr
 
 
@@ -430,7 +431,7 @@ F.lo[1, 'NH3'] = 0.0
 
 # 2. Provide a better initial guess for the key variables (Stream 6 and Recoveries)
 # You need a non-zero value for the total flow in Stream 6.
-# Use the fixed production target (22.5085 kmol/hr, assuming calculation is correct)
+# Use the fixed production target
 
 # # Set initial recovery variables to a non-zero, plausible value (e.g., 0.5)
 NH3_recovery.lo[...] = 0.8

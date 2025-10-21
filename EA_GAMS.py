@@ -465,7 +465,7 @@ PurityDTEA[...] = F[38, 'TEA'] == 0.997*Sum(i, F[38, i])
 #                             || INITIALIZATION FIX ||
 # ===============================================================================#
 # 1. Initialize all flows F to a small non-zero value for safety
-# F.l[j, i] = 1e-6  # Small non-zero initial guess for all flows
+F.l[j, i] = 1e-6  # Small non-zero initial guess for all flows
 
 NH3_input = 135.015  # kmol/hr
 fix_values(F[23, 'NH3'], NH3_input)

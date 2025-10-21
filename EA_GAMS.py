@@ -17,9 +17,10 @@ def null_comp_check(param: Parameter, i: Set):
 def fix_values(var: Variable, val: float):
     """Fixes the lower, upper, and level bounds \
         of a Variable to a specific value."""
-    var.up[...] = val
-    var.l[...] = val
-    var.lo[...] = val
+    # var.up[...] = val
+    # var.l[...] = val
+    # var.lo[...] = val
+    var.fx[...] = val
     return var
 
 
@@ -145,7 +146,7 @@ nu = Parameter(
 
         ('DEA', 1, 0),
         ('DEA', 2, 1.0),
-        ('DEA', 3, 0),
+        ('DEA', 3, -1.0),
 
         ('TEA', 1, 0),
         ('TEA', 2, 0),
@@ -360,7 +361,7 @@ Splitratio = Equation(
     container=m,
     domain=i,
 )
-Splitratio[i] = F[35, i] == sf * F[32, i]
+Splitratio[i] = F[32, i] == sf * F[33, i]
 
 # ===============================================================================#
 #                              ||   Distillation Column (34->36+37+38+39) ||
@@ -402,11 +403,6 @@ NotH2OEA = Set(
     description="Involved chemical components excl EAs and water"
 )
 
-DistillationNOOTHERs = Equation(
-    container=m,
-    domain=NotH2OEA,
-)
-DistillationNOOTHERs[NotH2OEA] = F[34, NotH2OEA] == 0.0
 
 # RECOVERIES
 RecoveryH2ODef = Equation(
@@ -465,30 +461,14 @@ PurityDTEA[...] = F[38, 'TEA'] == 0.997*Sum(i, F[38, i])
 # ===============================================================================#
 #                             || INLET REQUIREMENTS ||
 # ===============================================================================#
-
-NH3_input = 135.015  # kmol/hr
-NH3_inlet = Parameter(
-    container=m,
-    name='NH3_inlet',
-    records=NH3_input,
-    description="Available NH3 feed"
-)
-
-Feed_NH3_Constraint = Equation(
-    container=m,
-    name='Feed_NH3_Constrain',
-    description="Fixes NH3 inlet flowrate in Stream 23"
-)
-
-# F[23, 'NH3'] must equal the target amount.
-Feed_NH3_Constraint[...] = F[23, 'NH3'] == NH3_inlet
-
 # ===============================================================================#
 #                             || INITIALIZATION FIX ||
 # ===============================================================================#
 # 1. Initialize all flows F to a small non-zero value for safety
-F.lo[j, i] = 1e-6  # Small non-zero initial guess for all flows
+# F.l[j, i] = 1e-6  # Small non-zero initial guess for all flows
 
+NH3_input = 135.015  # kmol/hr
+fix_values(F[23, 'NH3'], NH3_input)
 fix_values(F[23, 'H2O'], 0.0)
 fix_values(F[23, 'EO'], 0.0)
 fix_values(F[23, 'MEA'], 0.0)
@@ -497,16 +477,13 @@ fix_values(F[23, 'DEA'], 0.0)
 
 # Set initial recovery variables
 # RecoveryDMEA.lo[...] = 0.8
-RecoveryDMEA.up[...] = 0.9
+RecoveryDMEA.up[...] = 0.98
 
 # RecoveryDDEA.lo[...] = 0.8
-RecoveryDDEA.up[...] = 0.9
+RecoveryDDEA.up[...] = 0.98
 
 # RecoveryDTEA.lo[...] = 0.8
-RecoveryDTEA.up[...] = 0.9
-
-# H2O_recovery.lo[...] = 1e-6
-# H2O_recovery.up[...] = 1.0
+RecoveryDTEA.up[...] = 0.98
 
 # ===============================================================================#
 #                            || MODEL SETUP AND SOLVE ||
@@ -524,7 +501,7 @@ ObjFunc = Equation(
     description="Objective Function Definition"
 )
 
-ObjFunc[...] = z == Sum(i, F[26, i])
+ObjFunc[...] = z == Sum(i, F[28, i])
 
 # Define the Model
 EA_Prodution_Model = Model(

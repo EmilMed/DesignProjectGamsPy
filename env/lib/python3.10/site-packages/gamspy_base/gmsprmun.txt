@@ -1,0 +1,12 @@
+******************************************************************
+* GAMS 2.50 default Unix parameter file                          *
+* Gams Development Corp.                                         *
+* Date : 4 May, 1998                                             *
+******************************************************************
+
+* entries required by CMEX, put in by the gams script
+
+* SYSDIR
+* SCRDIR
+* SCRIPTNEXT
+* INPUT

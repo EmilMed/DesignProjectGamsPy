@@ -38,9 +38,9 @@ i = Set(
         'H2O',
         'O',
         'N',
-        'Ar',
         'CO2',
-        'NH3'
+        'NH3',
+        'Ar',
     ],
     description="Involved chemical components"
 )
@@ -90,10 +90,10 @@ yHfeed = Parameter(
         ('H', 0.999070),
         ('H2O', 0.000860),
         ('O', 0.000070),
-        # ('N', 0.0),
-        # ('Ar', 0.0),
-        # ('CO2', 0.0),
-        # ('NH3', 0.0)
+        ('N', 0.0),
+        ('Ar', 0.0),
+        ('CO2', 0.0),
+        ('NH3', 0.0)
     ],
     description="Molar fraction of components in fresh H2 feed"
 )

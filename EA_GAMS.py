@@ -67,7 +67,7 @@ F = Variable(
 
 
 # ===============================================================================#
-#                              || Mixer 1 || W
+#                              || Mixer 1 (23+24->25)|| W
 # ===============================================================================#
 
 Mixer1mb = Equation(
@@ -99,11 +99,11 @@ S24_Comp[notwater] = F[24, notwater] == 0.0
 WaterComp = Equation(
     container=m,
 )
-WaterComp[...] = F[25, 'H2O'] == (1/3)*F[25, 'NH3']
+WaterComp[...] = F[25, 'H2O']*3 == F[25, 'NH3']
 
 
 # ===============================================================================#
-#                              || Crossover 1 || W
+#                              || Crossover 1 (25+26->27)|| W
 # ===============================================================================#
 
 Crossover1mb = Equation(
@@ -113,7 +113,7 @@ Crossover1mb = Equation(
 Crossover1mb[i] = F[25, i] + F[26, i] == F[27, i]
 
 # ===============================================================================#
-#                              ||   PFR 1  ||
+#                              ||   PFR 1  (27+28->29)||
 # ===============================================================================#
 reactions = Set(
     container=m,
@@ -183,6 +183,7 @@ extent = Variable(
     container=m,
     name="extent_of_reaction",
     domain=reactions,
+    type="positive",
     description="Extent of reaction for each reaction in PFR"
 )
 
@@ -221,7 +222,7 @@ NH3EOratio[...] = (F[27, 'EO'] + F[28, 'EO']) * 10 == F[27, 'NH3']
 
 notwaterANDEO = Set(
     container=m,
-    domain = i,
+    domain=i,
     name='notwaterANDEO',
     records=[
         'NH3',
@@ -246,7 +247,7 @@ S28FeedRatio[...] = F[28, 'EO'] == 99 * (F[28, 'H2O'])
 
 
 # ===============================================================================#
-#                              ||   Ammonia Stripper  ||
+#                              ||   Ammonia Stripper (29->30+31)||
 # ===============================================================================#
 
 Strippermb = Equation(
@@ -284,7 +285,7 @@ otherRecovery = Equation(
 otherRecovery[notAmmonia] = F[31, notAmmonia] == F[29, notAmmonia]
 
 # ===============================================================================#
-#                              ||   Crossover 2  ||
+#                              ||   Crossover 2  (30+32->26) ||
 # ===============================================================================# 
 
 Crossover2mb = Equation(
@@ -296,7 +297,7 @@ Crossover2mb[i] = F[30, i] + F[32, i] == F[26, i]
 
 
 # ===============================================================================#
-#                              ||   Dehydration Unit  ||
+#                              ||   Dehydration Unit (31->33+34) ||
 # ===============================================================================# 
 
 Dehydrationmb = Equation(
@@ -340,7 +341,7 @@ DehydNH3 = Equation(
 DehydNH3[...] = F[31, 'NH3'] == F[33, 'NH3']
 
 # ===============================================================================#
-#                              ||   Splitter  ||
+#                              ||   Splitter (33->32+35) ||
 # ===============================================================================# 
 
 sf = Parameter(
@@ -362,22 +363,25 @@ Splitratio = Equation(
 Splitratio[i] = F[35, i] == sf * F[32, i]
 
 # ===============================================================================#
-#                              ||   Distillation Column  ||
+#                              ||   Distillation Column (34->36+37+38+39) ||
 # ===============================================================================# 
 
 RecoveryDMEA = Variable(
     container=m,
     name='RecoveryDMEA',
+    type = "positive",
 )
 
 RecoveryDDEA = Variable(
     container=m,
     name='RecoveryDDEA',
+    type = "positive"
 )
 
 RecoveryDTEA = Variable(
     container=m,
     name='RecoveryDTEA',
+    type = "positive"
 )
 
 DistillationMB = Equation(
@@ -386,6 +390,23 @@ DistillationMB = Equation(
 )
 
 DistillationMB[i] = F[34, i] == F[36, i] + F[37, i] + F[38, i] + F[39, i]
+
+NotH2OEA = Set(
+    container=m,
+    domain=i,
+    name='NotH2OEA',
+    records=[
+        'NH3',
+        'EO'
+    ],
+    description="Involved chemical components excl EAs and water"
+)
+
+DistillationNOOTHERs = Equation(
+    container=m,
+    domain=NotH2OEA,
+)
+DistillationNOOTHERs[NotH2OEA] = F[34, NotH2OEA] == 0.0
 
 # RECOVERIES
 RecoveryH2ODef = Equation(
@@ -475,13 +496,13 @@ fix_values(F[23, 'TEA'], 0.0)
 fix_values(F[23, 'DEA'], 0.0)
 
 # Set initial recovery variables
-RecoveryDMEA.lo[...] = 0.8
+# RecoveryDMEA.lo[...] = 0.8
 RecoveryDMEA.up[...] = 0.9
 
-RecoveryDDEA.lo[...] = 0.8
+# RecoveryDDEA.lo[...] = 0.8
 RecoveryDDEA.up[...] = 0.9
 
-RecoveryDTEA.lo[...] = 0.8
+# RecoveryDTEA.lo[...] = 0.8
 RecoveryDTEA.up[...] = 0.9
 
 # H2O_recovery.lo[...] = 1e-6
@@ -491,19 +512,34 @@ RecoveryDTEA.up[...] = 0.9
 #                            || MODEL SETUP AND SOLVE ||
 # ===============================================================================#
 
+z = Variable(
+    container=m,
+    name="objectiveZ",
+    description="Objective Function Variable"
+)
+
+ObjFunc = Equation(
+    container=m,
+    name="ObjFunc",
+    description="Objective Function Definition"
+)
+
+ObjFunc[...] = z == Sum(i, F[26, i])
+
 # Define the Model
 EA_Prodution_Model = Model(
     container=m,
     name='EA_Prodution_Model',
 
     # 1. Set the objective to the H2 Fresh Feed flow
-    # sense=Sense.MIN,
+    objective=z,
+    sense=Sense.MIN,
 
     # 2. List all required equations
     equations=m.getEquations(),
 
     # Use NLP because of the non-linear purity
-    problem=Problem.CNS
+    problem=Problem.NLP
 )
 
 print(EA_Prodution_Model.solve())

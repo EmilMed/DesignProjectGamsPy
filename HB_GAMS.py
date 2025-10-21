@@ -69,6 +69,8 @@ F = Variable(
 #                           || STOICHIOMETRIC FEED ||
 # ===============================================================================#
 
+# BAD COND
+ 
 # # Equation to enforce the H:N ratio for fresh feed (Stream 3)
 # StoichFeed = Equation(
 #     container=m,
@@ -188,6 +190,10 @@ Crossover2MB[i] = F[3, i] + F[9, i] == F[4, i]
 # ===============================================================================#
 #                                || Reactor  ||
 # ===============================================================================#
+
+v_2 = Parameter(
+    
+)
 
 v_1 = Parameter(
     container=m,
@@ -392,6 +398,7 @@ MT_MB = Equation(
     domain=[i],  # over components
     description="Mass balance over MTransport"
 )
+
 MT_MB[i] = F[6, i] == F[10, i] + F[11, i]
 
 split_ure = Parameter(
@@ -400,6 +407,7 @@ split_ure = Parameter(
     records=0.6,  # 60% of ammonia to urea process
     description="Split fraction of ammonia from transport to urea process"
 )
+
 
 MT_Split_def = Equation(
     container=m,

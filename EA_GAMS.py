@@ -1,17 +1,16 @@
 from gamspy import (Container, Set, Parameter, Variable,
                     Equation, Model, Sense, Problem, Sum)
 import pandas as pd
-import numpy as np
 
 
-def null_comp_check(param: Parameter, i: Set, val: float):
+def null_comp_check(param: Parameter, i: Set):
     """
     Checks if all components in set 'i' are present in the parameter's
     records, and adds them with a value of 0.0 if missing.
     """
     for component in i.records.iloc[:, 0]:
         if component not in [record[0] for record in param.records]:
-            param.records.loc[len(param.records)] = [component, val]
+            param.records.loc[len(param.records)] = [component, 0.0]
     return param
 
 
@@ -27,24 +26,29 @@ def fix_values(var: Variable, val: float):
 # Define model container
 m = Container()
 
+
 # ===============================================================================#
-#                         || Base Information ||
+#                          || Base Information ||
 # ===============================================================================#
 
-# Involved chemical components 
 i = Set(
     container=m,
     name='comps',
     records=[
-        'NH3',  'H2O',  'EO',   'MEA',  'DEA',  'TEA',  'Heavy', 
-        'H',    'O',    'N',    'CO2',  'Ar'
+        'NH3',
+        'H2O',
+        'EO',
+        'MEA',
+        'DEA',
+        'TEA',
     ],
-    description="Involved chemical components including inert impurities"
+    description="Involved chemical components EA process"
 )
 
 # No. of streams in process
 N_streams_start = 23
 N_streams_end = 39
+
 j = Set(
     container=m,
     name='streams',
@@ -52,404 +56,516 @@ j = Set(
     description="Flow streams in process"
 )
 
-# Molar flowrate of component i in stream j
+
 F = Variable(
     container=m,
     name="F",
-    domain=[j, i],
+    domain=[j, i],  # per comp & stream
     type="positive",
-    description="Molar flowrate of component i in stream j [kmol/hr]"
+    description="Molar flowrate of component i in stream j"
 )
 
 
-# Split Fraction for Splitter (34 -> 32 + 35)
-
-
 # ===============================================================================#
-#                         || STOICHIOMETRY & FEEDS ||
+#                              || Mixer 1 || W
 # ===============================================================================#
-# --- Impure Ammonia Feed (Stream 23) ---
-yNH3_feed = Parameter(
+
+Mixer1mb = Equation(
     container=m,
-    name='yNH3_feed',
-    domain=[i],
+    domain=i,
+)
+Mixer1mb[i] = F[23, i] + F[24, i] == F[25, i]
+
+notwater = Set(
+    container=m,
+    domain = i,
+    name='notwater',
     records=[
-        ('H', 0.0), ('H2O', 0.001784), ('O', 0.000330), ('N', 0.001881), 
-        ('CO2', 0.000005), ('NH3', 0.996000), ('Ar', 0.0), ('EO', 0.0),
-        ('MEA', 0.0), ('DEA', 0.0), ('TEA', 0.0), ('Heavy', 0.0)
-    ]
+        'NH3',
+        'EO',
+        'MEA',
+        'DEA',
+        'TEA'
+    ],
+    description="Involved chemical components EA process excl water"
+)   
+
+S24_Comp = Equation(
+    container=m,
+    domain=notwater,
 )
+S24_Comp[notwater] = F[24, notwater] == 0.0
 
-TotalFlow23 = Variable(container=m, name="TotalFlow23", type="positive")
-TotalFlow23_Def = Equation(container=m, name="TotalFlow23_Def")
-TotalFlow23_Def[...] = TotalFlow23 == Sum(i, F[23, i])
+WaterComp = Equation(
+    container=m,
+)
+WaterComp[...] = F[25, 'H2O'] == (1/3)*F[25, 'NH3']
 
-NH3Feed_relation = Equation(container=m, name="NH3Feed_relation", domain=[i])
-NH3Feed_relation[i] = F[23, i] == TotalFlow23 * yNH3_feed[i]
 
 # ===============================================================================#
-#                         || MIXER (23 + 24 -> 25) ||
+#                              || Crossover 1 || W
 # ===============================================================================#
 
-Mixer25MB = Equation(
+Crossover1mb = Equation(
     container=m,
-    name="Mixer25MB",
-    domain=[i]
+    domain=i,
 )
-
-Mixer25MB[i] = F[23, i] + F[24, i] == F[25, i]
-
-WaterRatio = Equation(
-    container=m,
-    name="WaterRatio"
-)
-
-WaterRatio[...] = F[25, 'H2O'] == 0.25 * F[25, 'NH3']
+Crossover1mb[i] = F[25, i] + F[26, i] == F[27, i]
 
 # ===============================================================================#
-#                           || MIXER (25 + 26 -> 27) ||
+#                              ||   PFR 1  ||
 # ===============================================================================#
-
-Mixer27MB = Equation(
+reactions = Set(
     container=m,
-    name="Mixer27MB",
-    domain=[i]
+    name='reactions',
+    records=[1, 2, 3],
+    description="Reactions in PFR"
 )
 
-Mixer27MB[i] = F[25, i] + F[26, i] == F[27, i]
-
-# ===============================================================================#
-#                        || PFR Reactor (27 + 28 -> 29) ||
-# ===============================================================================#
-sp_conv = Parameter(container=m, name='sp_conv', records=0.99, description="Specified EO conversion")
-
-X = Variable(
+nu = Parameter(
     container=m,
-    name="X",
-    type="positive",
-    description="Extent of reaction for the PFR Reactor [kmol/hr]"
+    domain=[i, reactions],
+    name='nu',
+    records=[
+        ('NH3', 1, -1.0),
+        ('NH3', 2, 0),
+        ('NH3', 3, 0),
+
+        ('H2O', 1, 0.0),
+        ('H2O', 2, 0.0),
+        ('H2O', 3, 0.0),
+
+        ('EO', 1, -1.0),
+        ('EO', 2, -1.0),
+        ('EO', 3, -1.0),
+
+        ('MEA', 1, 1),
+        ('MEA', 2, -1.0),
+        ('MEA', 3, 0),
+
+        ('DEA', 1, 0),
+        ('DEA', 2, 1.0),
+        ('DEA', 3, 0),
+
+        ('TEA', 1, 0),
+        ('TEA', 2, 0),
+        ('TEA', 3, 1.0),
+    ],
+    description="Stoichiometric coefficients for the PFR"
 )
 
-ExtentDef = Equation(
+SPC_EO = Parameter(
     container=m,
-    name="ExtentDef"
-)
-ExtentDef[...] = X == sp_conv * (F[28, 'EO'] + F[27, 'EO'])
-
-
-pfr_sel = Parameter(
-                    container=m,
-                    domain=[i],
-                    name="pfr_sel",
-                    records=[("MEA", 0.75), ("DEA", 0.21), ("TEA", 0.04),
-                             ("NH3", 1), ("EO", 1)]
-                )
-null_comp_check(pfr_sel, i, 0.00)
-
-v_pfr = Parameter(
-                    container=m,
-                    domain=[i],
-                    name="v_pfr",
-                    records=[("NH3", -1), ("EO", -1),
-                             ("MEA", 1), ("DEA", 1), ("TEA", 1)]
-                            )
-null_comp_check(v_pfr, i, 0.00)
-
-
-ReactorMB = Equation(
-    container=m,
-    name="ReactorMB",
-    domain=[i]
+    name='SPC_EO',
+    records=0.99
 )
 
-ReactorMB[i] = F[29, i] == F[27, i] + F[28, i] + X * v_pfr[i] * pfr_sel[i]
-
-# ReactorMB['NH3'] = F[29, 'NH3'] == F[27, 'NH3'] - X
-# ReactorMB['EO'] = F[29, 'EO'] == F[27, 'EO'] + F[28, 'EO'] - X
-# ReactorMB['MEA'] = F[29, 'MEA'] == X * sel_MEA
-# ReactorMB['DEA'] = F[29, 'DEA'] == X * sel_DEA
-# ReactorMB['TEA'] = F[29, 'TEA'] == X * sel_TEA
-
-# InertComps = Set(
-#     container=m,
-#     name='InertComps',
-#     records=['H2O', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar']
-# )
-
-# ReactorMB[InertComps] = F[29, InertComps] == F[27, InertComps] + F[28, InertComps]
-
-# ===============================================================================#
-#                       || Ammonia Stripper (29 -> 30 + 31) || - looks cooked
-# ===============================================================================#
-
-StripperMB = Equation(
+S_MEA = Parameter(
     container=m,
-    name="StripperMB",
-    domain=[i]
+    name='S_MEA',
+    records=0.75
 )
 
-StripperMB[i] = F[29, i] == F[30, i] + F[31, i]
-
-NH3Recovery = Equation(
+S_DEA = Parameter(
     container=m,
-    name="NH3Recovery"
+    name='S_DEA',
+    records=0.21
 )
 
-NH3Recovery[...] = F[30, 'NH3'] == 0.99 * F[29, 'NH3']
-
-NonVolatileSet = Set(
-    domain=[i],
+# blahhh
+S_TEA = Parameter(
     container=m,
-    name='NonVolatileSet',
-    records=['H2O', 'MEA', 'DEA', 'TEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar']
+    name='S_TEA',
+    records=0.04
 )
 
-NonVolatileSplit = Equation(
+extent = Variable(
     container=m,
-    name="NonVolatileSplit",
-    domain=[NonVolatileSet]
+    name="extent_of_reaction",
+    domain=reactions,
+    description="Extent of reaction for each reaction in PFR"
 )
 
-NonVolatileSplit[NonVolatileSet] = F[30, NonVolatileSet] == 0
-
-# ===============================================================================#
-#                          || Mixer (30 + 32 -> 26) ||
-# ===============================================================================#
-
-Mixer26MB = Equation(
+pfr1mb = Equation(
     container=m,
-    name="Mixer26MB",
-    domain=[i]
+    domain=i,
+)
+pfr1mb[i] = F[27, i] + F[28, i] + Sum(reactions, nu[i, reactions] * extent[reactions]) == F[29, i]
+
+SPCdef = Equation(
+    container=m,
+)
+SPCdef[...] = Sum(reactions, extent[reactions]) == SPC_EO * (F[27, 'EO'] + F[28, 'EO'])
+
+S_MEAdef = Equation(
+    container=m,
+)
+S_MEAdef[...] = (extent[1]-extent[2]) == (extent[1]+extent[2]+extent[3])*S_MEA
+
+S_DEAdef = Equation(
+    container=m,
 )
 
-Mixer26MB[i] = F[30, i] + F[32, i] == F[26, i]
+S_DEAdef[...] = (extent[2]-extent[3]) == (extent[1]+extent[2]+extent[3])*S_DEA
 
-# ===============================================================================#
-#                     || Dehydration Unit (31 -> 33 + 34) ||
-# ===============================================================================#
-
-DehyMB = Equation(
+S_TEAdef = Equation(
     container=m,
-    name="DehyMB",
-    domain=[i]
 )
 
-DehyMB[i] = F[31, i] == F[33, i] + F[34, i]
+S_TEAdef[...] = (extent[3]) == (extent[1]+extent[2]+extent[3])*S_TEA
 
-
-H2ORecovery = Equation(
+NH3EOratio = Equation(
     container=m,
-    name="H2ORecovery"
+)
+NH3EOratio[...] = (F[27, 'EO'] + F[28, 'EO']) * 10 == F[27, 'NH3']
+
+notwaterANDEO = Set(
+    container=m,
+    domain = i,
+    name='notwaterANDEO',
+    records=[
+        'NH3',
+        'MEA',
+        'DEA',
+        'TEA'
+    ],
+    description="Involved chemical components EA process excl water and eo"
+) 
+
+S28_Comp = Equation(
+    container=m,
+    domain=notwaterANDEO,
+)
+S28_Comp[notwaterANDEO] = F[28, notwaterANDEO] == 0.0
+
+S28FeedRatio = Equation(
+    container=m,
 )
 
-H2ORecovery[...] = F[34, 'H2O'] == 0.99 * F[31, 'H2O']
+S28FeedRatio[...] = F[28, 'EO'] == 99 * (F[28, 'H2O'])
 
-DehyNonVolatileSet = Set(
-    container=m,
-    name='DehyNonVolatileSet',
-    domain=[i],
-    records=['MEA', 'DEA', 'TEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar']
-)
-
-NonVolatileDehySplit = Equation(
-    container=m,
-    name="NonVolatileDehySplit",
-    domain=[DehyNonVolatileSet]
-)
-
-NonVolatileDehySplit[DehyNonVolatileSet] = F[34, DehyNonVolatileSet] == 0
 
 # ===============================================================================#
-#                      || Splitter (34 -> 32 + 35) ||
+#                              ||   Ammonia Stripper  ||
 # ===============================================================================#
 
-SplitterMB = Equation(
+Strippermb = Equation(
     container=m,
-    name="SplitterMB",
-    domain=[i]
+    domain=i,
 )
 
-SplitterMB[i] = F[34, i] == F[32, i] + F[35, i]
+Strippermb[i] = F[29, i] == F[30, i] + F[31, i]
+
+ammoniaRecovery = Equation(
+    container=m,
+)
+
+ammoniaRecovery[...] = F[30, 'NH3'] == 0.99 * F[29, 'NH3']
+
+notAmmonia = Set(
+    container=m,
+    domain=i,
+    name='notAmmonia',
+    records=[
+        'MEA',
+        'DEA',
+        'TEA',
+        'H2O',
+        'EO'
+    ],
+    description="Involved chemical components EA process excl ammonia"
+)
+
+otherRecovery = Equation(
+    container=m,
+    domain=notAmmonia,
+)
+
+otherRecovery[notAmmonia] = F[31, notAmmonia] == F[29, notAmmonia]
+
+# ===============================================================================#
+#                              ||   Crossover 2  ||
+# ===============================================================================# 
+
+Crossover2mb = Equation(
+    container=m,
+    domain=i,
+)
+
+Crossover2mb[i] = F[30, i] + F[32, i] == F[26, i]
+
+
+# ===============================================================================#
+#                              ||   Dehydration Unit  ||
+# ===============================================================================# 
+
+Dehydrationmb = Equation(
+    container=m,
+    domain=i,
+)
+
+Dehydrationmb[i] = F[31, i] == F[33, i] + F[34, i]
+
+waterRemoval = Equation(
+    container=m,
+)
+waterRemoval[...] = F[33, 'H2O'] == 0.99 * F[31, 'H2O']
+
+notNH3EOH2O = Set(
+    container=m,
+    domain=i,
+    name='notNH3EOH2O',
+    records=[
+        'MEA',
+        'DEA',
+        'TEA',
+    ],
+    description="Involved chemical components EA process excl ammonia"
+)
+
+otherRecDehyd = Equation(
+    container=m,
+    domain=notNH3EOH2O,
+)
+otherRecDehyd[notNH3EOH2O] = F[31, notNH3EOH2O] == F[34, notNH3EOH2O]
+
+DehydEO = Equation(
+    container=m,
+)
+DehydEO[...] = F[31, 'EO'] == F[33, 'EO']
+
+DehydNH3 = Equation(
+    container=m,
+)
+DehydNH3[...] = F[31, 'NH3'] == F[33, 'NH3']
+
+# ===============================================================================#
+#                              ||   Splitter  ||
+# ===============================================================================# 
 
 sf = Parameter(
     container=m,
     name='sf',
-    records=0.05,
-    description="Split Fraction to Purge (Stream 35)"
+    records=0.99,
 )
 
-SplitterFlow35 = Equation(
+SplitterMB = Equation(
     container=m,
-    name="SplitterFlow35",
-    domain=[i]
+    domain=i,
 )
+SplitterMB[i] = F[32, i] + F[35, i] == F[33, i]
 
-SplitterFlow35[i] = F[35, i] == sf * F[34, i]
+Splitratio = Equation(
+    container=m,
+    domain=i,
+)
+Splitratio[i] = F[35, i] == sf * F[32, i]
 
 # ===============================================================================#
-#                  || EAs Separation Unit (33 -> 36, 37, 38, 39) ||
-# ===============================================================================#
+#                              ||   Distillation Column  ||
+# ===============================================================================# 
 
-
-SeparationMB = Equation(
+RecoveryDMEA = Variable(
     container=m,
-    name="SeparationMB",
-    domain=[i]
+    name='RecoveryDMEA',
 )
 
-SeparationMB[i] = F[33, i] == F[36, i] + F[37, i] + F[38, i] + F[39, i]
-
-# Purity and Recovery Constraints (DOF Table)
-MEA_Purity = Equation(
+RecoveryDDEA = Variable(
     container=m,
-    name="MEA_Purity"
+    name='RecoveryDDEA',
 )
 
-MEA_Purity[...] = F[36, 'MEA'] == 0.99 * Sum(i, F[36, i])
-
-MEA_Recovery = Equation(
+RecoveryDTEA = Variable(
     container=m,
-    name="MEA_Recovery"
+    name='RecoveryDTEA',
 )
 
-MEA_Recovery[...] = F[36, 'MEA'] == 0.997 * F[33, 'MEA']
-
-DEA_Purity = Equation(
+DistillationMB = Equation(
     container=m,
-    name="DEA_Purity"
+    domain=i,
 )
 
-DEA_Purity[...] = F[37, 'DEA'] == 0.99 * Sum(i, F[37, i])
+DistillationMB[i] = F[34, i] == F[36, i] + F[37, i] + F[38, i] + F[39, i]
 
-DEA_Recovery = Equation(
+# RECOVERIES
+RecoveryH2ODef = Equation(
     container=m,
-    name="DEA_Recovery"
+)
+RecoveryH2ODef[...] = F[36, 'H2O'] == 1.0*F[34, 'H2O']
+
+RecoveryMEADef = Equation(
+    container=m,
+)
+RecoveryMEADef[...] = F[36, 'MEA'] == RecoveryDMEA*F[34, 'MEA']
+
+RecoveryDEADef = Equation(
+    container=m,
+)
+RecoveryDEADef[...] = F[37, 'DEA'] == RecoveryDDEA*F[34, 'DEA']
+
+RecoveryTEADef = Equation(
+    container=m,
+)
+RecoveryTEADef[...] = F[38, 'TEA'] == RecoveryDTEA*F[34, 'TEA']
+
+# 1 - RECOVERIES
+RecoveryMEA2Def = Equation(
+    container=m,
+)
+RecoveryMEA2Def[...] = F[37, 'MEA'] == (1-RecoveryDMEA)*F[34, 'MEA']
+
+RecoveryDEA2Def = Equation(
+    container=m,
+)
+RecoveryDEA2Def[...] = F[38, 'DEA'] == (1-RecoveryDDEA)*F[34, 'DEA']
+
+RecoveryTEA3Def = Equation(
+    container=m,
+)
+RecoveryTEA3Def[...] = F[39, 'TEA'] == (1-RecoveryDTEA)*F[34, 'TEA']   
+
+# PURITIES
+PurityDMEA = Equation(
+    container=m,
+)
+PurityDMEA[...] = F[36, 'MEA'] == 0.997*Sum(i, F[36, i])
+
+PurityDDEA = Equation(
+    container=m,
 )
 
-DEA_Recovery[...] = F[37, 'DEA'] == 0.997 * F[33, 'DEA']
+PurityDDEA[...] = F[37, 'DEA'] == 0.997*Sum(i, F[37, i])
 
-TEA_Purity = Equation(
+PurityDTEA = Equation(
     container=m,
-    name="TEA_Purity"
 )
-
-TEA_Purity[...] = F[38, 'TEA'] == 0.99 * Sum(i, F[38, i])
-
-TEA_Recovery = Equation(
-    container=m,
-    name="TEA_Recovery"
-)
-
-TEA_Recovery[...] = F[38, 'TEA'] == 0.997 * F[33, 'TEA']
-
-
-# --- PRODUCTION TARGET ---
-MEA_Prod_Target = Parameter(container=m, name='MEA_Prod_Target', records=100.0)
-Prod_Target_Constraint = Equation(container=m, name='Prod_Target_Constraint')
-Prod_Target_Constraint[...] = F[36, 'MEA'] == MEA_Prod_Target
-
-# Define the set of non-target components
-NonEAComps = Set(
-    container=m,
-    name='NonEAComps',
-    domain=[i],
-    records=['NH3', 'H2O', 'EO', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar'],
-    description="Components that are not MEA, DEA, or TEA"
-)
-
-NonEA_Zero_in_Products = Equation(
-    container=m,
-    name="NonEA_Zero_in_Products",
-    domain=[i]  # We will use a conditional assignment with the NonEAComps Set
-)
-
-NonEA_Zero_in_Products[NonEAComps] = F[36, NonEAComps] == 0
-
-# Constraint 2: Recovery of all Non-EAs is 100% to the Heavy stream (39)
-# This is equivalent to F[36,i] = F[37,i] = F[38,i] = 0 for NonEAComps,
-# which, combined with the mass balance, forces F[39, i] == F[33, i] for all NonEAComps.
-NonEA_Total_Recovery_to_39 = Equation(
-    container=m,
-    name="NonEA_Total_Recovery_to_39",
-    domain=[NonEAComps]
-)
-
-# For any non-EA component, the flow out in the purge stream (39) equals the flow in (33).
-# This assumes F[36,i], F[37,i], F[38,i] for NonEAComps are zero (as ensured by the F.up=0 bounds)
-NonEA_Total_Recovery_to_39[NonEAComps] = F[39, NonEAComps] == F[33, NonEAComps]
+PurityDTEA[...] = F[38, 'TEA'] == 0.997*Sum(i, F[38, i])
 
 # ===============================================================================#
-#                           || INITIALIZATION AND BOUNDS ||
+#                             || INLET REQUIREMENTS ||
 # ===============================================================================#
 
-F.l[j, i] = 1e-6  # Initialize all flows
+NH3_input = 135.015  # kmol/hr
+NH3_inlet = Parameter(
+    container=m,
+    name='NH3_inlet',
+    records=NH3_input,
+    description="Available NH3 feed"
+)
 
-# Define lists of components that MUST have zero flow in specific streams
-# Components that must be ZERO in Stream 24 (Pure H2O feed)
-zero_comp_24 = ['NH3', 'EO', 'MEA', 'DEA', 'TEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar'] 
-# Components that must be ZERO in Stream 28 (EO/H2O feed)
-zero_comp_28 = ['NH3', 'MEA', 'DEA', 'TEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar'] 
-# Components that must be ZERO in Stream 37 (DEA product + allowed trace TEA, so zero everything else)
-zero_comp_37 = ['NH3', 'H2O', 'EO', 'MEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar'] 
-# Components that must be ZERO in Stream 38 (TEA product only)
-zero_comp_38 = ['NH3', 'H2O', 'EO', 'MEA', 'DEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar'] 
-# Components that must be ZERO in Stream 39 (Heavy Ends only)
-zero_comp_39 = ['NH3', 'H2O', 'EO', 'MEA', 'DEA', 'TEA', 'H', 'O', 'N', 'CO2', 'Ar'] 
-# Components that must be ZERO in Stream 36 (MEA product + impurities, but DEA/TEA/Heavy should be minimal)
-# The zeroing of DEA/TEA/Heavy in 36 is indirectly handled by the high recoveries/purities of 37, 38, 39, 
-# so we will not enforce explicit F.up=0 here to avoid over-constraining the model.
+Feed_NH3_Constraint = Equation(
+    container=m,
+    name='Feed_NH3_Constrain',
+    description="Fixes NH3 inlet flowrate in Stream 23"
+)
 
-# Enforce Purity/Zero Flow via F.up bounds (Robust Method)
+# F[23, 'NH3'] must equal the target amount.
+Feed_NH3_Constraint[...] = F[23, 'NH3'] == NH3_inlet
 
+# ===============================================================================#
+#                             || INITIALIZATION FIX ||
+# ===============================================================================#
+# 1. Initialize all flows F to a small non-zero value for safety
+F.lo[j, i] = 1e-6  # Small non-zero initial guess for all flows
 
-def enforce_zero_flow(stream_index, component_list):
-    for comp in component_list:
-        F.up[stream_index, comp] = 0.0
-        F.l[stream_index, comp] = 0.0
+fix_values(F[23, 'H2O'], 0.0)
+fix_values(F[23, 'EO'], 0.0)
+fix_values(F[23, 'MEA'], 0.0)
+fix_values(F[23, 'TEA'], 0.0)
+fix_values(F[23, 'DEA'], 0.0)
 
+# Set initial recovery variables
+RecoveryDMEA.lo[...] = 0.8
+RecoveryDMEA.up[...] = 0.9
 
-enforce_zero_flow(24, zero_comp_24)
-enforce_zero_flow(28, zero_comp_28)
-enforce_zero_flow(37, zero_comp_37)
-enforce_zero_flow(38, zero_comp_38)
-enforce_zero_flow(39, zero_comp_39)
+RecoveryDDEA.lo[...] = 0.8
+RecoveryDDEA.up[...] = 0.9
 
-# Components that must be ZERO in Stream 37 (DEA product only, making it PURE)
-# Original definition: ['NH3', 'H2O', 'EO', 'MEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar'] 
-# ADD 'TEA' to force it into 38 or 39.
-zero_comp_37_pure = ['NH3', 'H2O', 'EO', 'MEA', 'Heavy', 'H', 'O', 'N', 'CO2', 'Ar', 'TEA'] # <-- ADD TEA
+RecoveryDTEA.lo[...] = 0.8
+RecoveryDTEA.up[...] = 0.9
 
-# Components that must be ZERO in Stream 36 (MEA product)
-zero_comp_36_impurities = ['DEA', 'TEA', 'Heavy'] 
-
-enforce_zero_flow(24, zero_comp_24)
-enforce_zero_flow(28, zero_comp_28)
-# Replace old call with new pure definition:
-enforce_zero_flow(37, zero_comp_37_pure) # <-- UPDATED CALL
-enforce_zero_flow(38, zero_comp_38)
-enforce_zero_flow(39, zero_comp_39)
-enforce_zero_flow(36, zero_comp_36_impurities) # <-- NEW CALL (from last step)
-
+# H2O_recovery.lo[...] = 1e-6
+# H2O_recovery.up[...] = 1.0
 
 # ===============================================================================#
 #                            || MODEL SETUP AND SOLVE ||
 # ===============================================================================#
 
-z = Variable(container=m, name="objectiveZ")
-
-ObjFunc = Equation(container=m, name="ObjFunc")
-# Minimize fresh EO feed (Stream 28)
-ObjFunc[...] = z == F[28, 'EO']
-
-
 # Define the Model
-EA_Process_Model = Model(
+EA_Prodution_Model = Model(
     container=m,
-    name='Ethanolamines_Process',
-    objective=z,
-    sense=Sense.MIN,
+    name='EA_Prodution_Model',
+
+    # 1. Set the objective to the H2 Fresh Feed flow
+    # sense=Sense.MIN,
+
+    # 2. List all required equations
     equations=m.getEquations(),
-    problem=Problem.NLP
+
+    # Use NLP because of the non-linear purity
+    problem=Problem.CNS
 )
-# Solve the Model
-print(EA_Process_Model.solve())
+
+print(EA_Prodution_Model.solve())
+
+pd.set_option('display.max_rows', None)     # Display all rows
+pd.set_option('display.max_columns', None)  # Display all columns
+pd.set_option('display.width', None)        # Allow output to be wider
+
+print("--- Component Flows per Stream ---")
+print(F.records)
+
+data = F.records.values
+
+# 1. Create a DataFrame from the raw data
+# Assign generic names based on the columns of interest
+df = pd.DataFrame(data, columns=['stream_number', 'component', 'flow_level',
+                                 'marginal', 'lower', 'upper', 'scale'])
+
+# 2. Ensure the key columns are numeric (critical for summation!)
+# Errors='coerce' handles the string values
+# like 'inf' by converting them to NaN,
+# which are correctly ignored by the .sum() function.
+
+df['stream_number'] = pd.to_numeric(df['stream_number'], errors='coerce')
+df['flow_level'] = pd.to_numeric(df['flow_level'], errors='coerce')
+
+# 3. The Formula: Group by stream_number and sum the flow_level
+stream_sums = df.groupby('stream_number')['flow_level'].sum().reset_index()
+
+# Rename columns for clarity
+stream_sums.rename(columns={'flow_level': 'total_flow_sum'}, inplace=True)
+
+# Print the result
+print("--- Total Flow Sums per Stream ---")
+print(stream_sums)
+
+# ----------------------------------------------------------------------
+# ---           Composition Calculation                            ---
+
+print("\n--- Composition of Streams (Component Fraction) ---")
+
+# 4. Merge the total stream sums back into the original data frame (df).
+# The merge works cleanly because stream_sums now only contains
+# 'stream_number' and 'total_flow_sum'
+composition_df = df.merge(
+    stream_sums,
+    on='stream_number',
+    how='left'
+)
+
+# 5. Calculate the fractional composition for each component.
+# FIX: The numerator is correctly 'flow_level' (from original df).
+# The denominator is 'total_flow_sum' (the new column from the merge).
+composition_df['fraction'] = (
+    composition_df['flow_level'] / composition_df['total_flow_sum']
+)
+
+# Optional: Select the relevant columns
+# and round the fraction for cleaner output
+final_composition = composition_df[['stream_number', 'component', 'flow_level',
+                                    'total_flow_sum', 'fraction']].copy()
+final_composition['fraction'] = final_composition['fraction'].round(6)
+
+# Final display
+print(final_composition)

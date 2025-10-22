@@ -102,7 +102,6 @@ WaterComp = Equation(
 )
 WaterComp[...] = F[25, 'H2O']*3 == F[25, 'NH3']
 
-
 # ===============================================================================#
 #                              || Crossover 1 (25+26->27)|| W
 # ===============================================================================#
@@ -180,6 +179,7 @@ S_TEA = Parameter(
     records=0.04
 )
 
+# MAYBE
 extent = Variable(
     container=m,
     name="extent_of_reaction",
@@ -187,6 +187,8 @@ extent = Variable(
     type="positive",
     description="Extent of reaction for each reaction in PFR"
 )
+extent.l[reactions] = 5.0
+
 
 pfr1mb = Equation(
     container=m,
@@ -445,18 +447,18 @@ RecoveryTEA3Def[...] = F[39, 'TEA'] == (1-RecoveryDTEA)*F[34, 'TEA']
 PurityDMEA = Equation(
     container=m,
 )
-PurityDMEA[...] = F[36, 'MEA'] == 0.997*Sum(i, F[36, i])
+PurityDMEA[...] = F[36, 'MEA'] == 0.99*Sum(i, F[36, i])
 
 PurityDDEA = Equation(
     container=m,
 )
 
-PurityDDEA[...] = F[37, 'DEA'] == 0.997*Sum(i, F[37, i])
+PurityDDEA[...] = F[37, 'DEA'] == 0.99*Sum(i, F[37, i])
 
 PurityDTEA = Equation(
     container=m,
 )
-PurityDTEA[...] = F[38, 'TEA'] == 0.997*Sum(i, F[38, i])
+PurityDTEA[...] = F[38, 'TEA'] == 0.99*Sum(i, F[38, i])
 
 # ===============================================================================#
 #                             || INLET REQUIREMENTS ||
@@ -501,7 +503,7 @@ ObjFunc = Equation(
     description="Objective Function Definition"
 )
 
-ObjFunc[...] = z == Sum(i, F[28, i])
+ObjFunc[...] = z == Sum(reactions, extent[reactions])
 
 # Define the Model
 EA_Prodution_Model = Model(
@@ -510,7 +512,7 @@ EA_Prodution_Model = Model(
 
     # 1. Set the objective to the H2 Fresh Feed flow
     objective=z,
-    sense=Sense.MIN,
+    sense=Sense.MAX,
 
     # 2. List all required equations
     equations=m.getEquations(),

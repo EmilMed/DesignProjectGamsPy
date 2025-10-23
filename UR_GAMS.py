@@ -51,7 +51,7 @@ N_streams_end = 22
 j = Set(
     container=m,
     name='streams',
-    records=list(range(1, N_streams_end + 1)),
+    records=list(range(N_streams_start, N_streams_end + 1)),
     description="Flow streams in process"
 )
 
@@ -68,7 +68,6 @@ F = Variable(
 # ===============================================================================#
 #                        || Urea Synthesis Loop (10+11+16->12+13)||
 # ===============================================================================#
-
 reactions = Set(
     container=m,
     name='reactions',
@@ -135,7 +134,7 @@ S11_CO2_Spec = Equation(
     description="Stream 11 is pure CO2 feed"
 )
 # F_11,i = 0 if i != CO2, NH3
-S11_CO2_Spec[S11_NoCO2] = F['11', S11_NoCO2] == 0.0
+S11_CO2_Spec[S11_NoCO2] = F['11', S11_NoCO2] == 0.0  
 
 
 # 3. SETgases Only in stream 12 (4 SETgases Only in stream 12)
@@ -157,21 +156,21 @@ S12_SETgases_Spec[SET_NoCO2NH3] = F['12', SET_NoCO2NH3] == 0.0
 
 
 # 4. Recycle Comp (4 Recycle Comp)
-SET_NoACNH3 = Set(
+SET_NoACNH3CO2 = Set(
     container=m,
     domain=i,
-    name='SET_NoACNH3',
-    records=['CO2', 'UREA', 'H2O'],
+    name='SET_NoACNH3CO2',
+    records=['UREA', 'H2O'],
     description="Components not recycled (not AC, NH3)"
 )
 S16_Comp_Spec = Equation(
     container=m,
-    domain=SET_NoACNH3,  # i excluding AC and NH3
+    domain=SET_NoACNH3CO2,  # i excluding AC and NH3
     name="S16_Comp_Spec",
     description="Only AC and NH3 are recycled in stream 16"
 )
 # F_16,i = 0 if i != AC, NH3
-S16_Comp_Spec[SET_NoACNH3] = F['16', SET_NoACNH3] == 0.0
+S16_Comp_Spec[SET_NoACNH3CO2] = F['16', SET_NoACNH3CO2] == 0.0
 
 
 # 5. Purge Recovery (2 recoveries)
@@ -228,6 +227,17 @@ ExtentDef_R2 = Equation(
 )
 # xi_2 = OC_AC * (F_16,AC + xi_1)
 ExtentDef_R2[...] = extent['2'] == OC_AC * (F['16', 'AC'] + extent['1'])
+
+# NEW - NH3:CO2 Molar Ratio in Feed Specification
+R_NH3_CO2_Feed = 3 # Molar ratio of NH3 to CO2 in feeds to loop
+
+NH3_CO2_FeedSpec = Equation(
+    container=m,
+    name="NH3_CO2_FeedSpec",
+    description="NH3 to CO2 molar ratio in feeds to Urea Synthesis Loop"
+)
+NH3_CO2_FeedSpec[...] = R_NH3_CO2_Feed*(F['11', 'CO2']+F['16', 'CO2']) \
+                        == F['10', 'NH3'] + F['16', 'NH3']
 
 # ===============================================================================#
 #                             || Decomposers (13->14+15) ||
@@ -485,12 +495,15 @@ extent_absorb = Variable(
     type="positive",
     description="Scalar extent of Absorption"
 )
+
+absorber_efficiency = 0.90
 extent_absorb_def = Equation(
     container=m,
     name="extent_absorb_def",
     description="Definition of extent of absorption"
 )
-extent_absorb_def[...] = extent_absorb == F['19', 'CO2'] + F['15', 'CO2']
+extent_absorb_def[...] = extent_absorb == \
+                         absorber_efficiency*(F['19', 'CO2'] + F['15', 'CO2'])
 
 AbsorbersMB = Equation(
     domain=i,

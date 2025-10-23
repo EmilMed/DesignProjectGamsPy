@@ -79,7 +79,7 @@ Mixer1mb[i] = F[23, i] + F[24, i] == F[25, i]
 
 notwater = Set(
     container=m,
-    domain = i,
+    domain=i,
     name='notwater',
     records=[
         'NH3',
@@ -89,7 +89,7 @@ notwater = Set(
         'TEA'
     ],
     description="Involved chemical components EA process excl water"
-)   
+)
 
 S24_Comp = Equation(
     container=m,
@@ -194,12 +194,18 @@ pfr1mb = Equation(
     container=m,
     domain=i,
 )
-pfr1mb[i] = F[27, i] + F[28, i] + Sum(reactions, nu[i, reactions] * extent[reactions]) == F[29, i]
+pfr1mb[i] = (
+    F[27, i] + F[28, i] +
+    Sum(reactions, nu[i, reactions] * extent[reactions]) == F[29, i]
+)
 
 SPCdef = Equation(
     container=m,
 )
-SPCdef[...] = Sum(reactions, extent[reactions]) == SPC_EO * (F[27, 'EO'] + F[28, 'EO'])
+SPCdef[...] = (
+    Sum(reactions, extent[reactions]) ==
+    SPC_EO * (F[27, 'EO'] + F[28, 'EO'])
+)
 
 S_MEAdef = Equation(
     container=m,
@@ -234,7 +240,7 @@ notwaterANDEO = Set(
         'TEA'
     ],
     description="Involved chemical components EA process excl water and eo"
-) 
+)
 
 S28_Comp = Equation(
     container=m,
@@ -289,7 +295,7 @@ otherRecovery[notAmmonia] = F[31, notAmmonia] == F[29, notAmmonia]
 
 # ===============================================================================#
 #                              ||   Crossover 2  (30+32->26) ||
-# ===============================================================================# 
+# ===============================================================================#
 
 Crossover2mb = Equation(
     container=m,
@@ -301,7 +307,7 @@ Crossover2mb[i] = F[30, i] + F[32, i] == F[26, i]
 
 # ===============================================================================#
 #                              ||   Dehydration Unit (31->33+34) ||
-# ===============================================================================# 
+# ===============================================================================#
 
 Dehydrationmb = Equation(
     container=m,
@@ -345,7 +351,7 @@ DehydNH3[...] = F[31, 'NH3'] == F[33, 'NH3']
 
 # ===============================================================================#
 #                              ||   Splitter (33->32+35) ||
-# ===============================================================================# 
+# ===============================================================================#
 
 sf = Parameter(
     container=m,
@@ -367,24 +373,24 @@ Splitratio[i] = F[32, i] == sf * F[33, i]
 
 # ===============================================================================#
 #                              ||   Distillation Column (34->36+37+38+39) ||
-# ===============================================================================# 
+# ===============================================================================#
 
 RecoveryDMEA = Variable(
     container=m,
     name='RecoveryDMEA',
-    type = "positive",
+    type="positive",
 )
 
 RecoveryDDEA = Variable(
     container=m,
     name='RecoveryDDEA',
-    type = "positive"
+    type="positive"
 )
 
 RecoveryDTEA = Variable(
     container=m,
     name='RecoveryDTEA',
-    type = "positive"
+    type="positive"
 )
 
 DistillationMB = Equation(
@@ -441,7 +447,7 @@ RecoveryDEA2Def[...] = F[38, 'DEA'] == (1-RecoveryDDEA)*F[34, 'DEA']
 RecoveryTEA3Def = Equation(
     container=m,
 )
-RecoveryTEA3Def[...] = F[39, 'TEA'] == (1-RecoveryDTEA)*F[34, 'TEA']   
+RecoveryTEA3Def[...] = F[39, 'TEA'] == (1-RecoveryDTEA)*F[34, 'TEA']
 
 # PURITIES
 PurityDMEA = Equation(

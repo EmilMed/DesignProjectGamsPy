@@ -69,16 +69,14 @@ F = Variable(
 #                           || STOICHIOMETRIC FEED ||
 # ===============================================================================#
 
-# BAD COND
- 
 # # Equation to enforce the H:N ratio for fresh feed (Stream 3)
-# StoichFeed = Equation(
-#     container=m,
-#     name='StoichFeed',
-#     description="Fresh feed ratio must be H:N = 3:1"
-# )
-# # F[1, 'H'] is the H2 component flow. F[2, 'N'] is the N2 component flow.
-# StoichFeed[...] = F[1, 'H'] == 3 * F[2, 'N']
+StoichFeed = Equation(
+    container=m,
+    name='StoichFeed',
+    description="Fresh feed ratio must be H:N = 3:1"
+)
+# F[4, 'H'] is the H2 component flow. F[4, 'N'] is the N2 component flow.
+StoichFeed[...] = F[4, 'H'] == 3 * F[4, 'N']
 
 
 # ===============================================================================#
@@ -191,10 +189,6 @@ Crossover2MB[i] = F[3, i] + F[9, i] == F[4, i]
 #                                || Reactor  ||
 # ===============================================================================#
 
-v_2 = Parameter(
-    
-)
-
 v_1 = Parameter(
     container=m,
     name='v_1',
@@ -219,7 +213,7 @@ sp_conv_hb = Parameter(
     description="Specified conversion in Haber-Bosch reactor"
 )
 
-Limit_reac_HB = "H"  # Limiting reactant for Haber-Bosch reaction
+Limit_reac_HB = "N"  # Limiting reactant for Haber-Bosch reaction
 
 X_HB = Variable(
     container=m,
@@ -309,6 +303,14 @@ NH3_Recov_Definition = Equation(
 NH3_Recov_Definition[...] = F[6, 'NH3'] == NH3_recovery * F[5, 'NH3']
 
 
+gas_to_product = Variable(
+    container=m,
+    name="gas_to_product",
+    type="positive",
+    description="Molar flowrate of gas sent to product from flash"
+)
+
+
 vol_gases_only = Set(
     container=m,
     name='vol_gases_only',
@@ -316,14 +318,13 @@ vol_gases_only = Set(
     records=['H', 'Ar'],
     description="Permanent gases forced to vapor phase"
 )
-
 Zero_Gas_Flow = Equation(
     container=m,
     name='Zero_Gas_Flow',
     domain=[vol_gases_only],
     description="Permanent gases forced to vapor phase (F[6,i] == 0)"
 )
-Zero_Gas_Flow[vol_gases_only] = F[6, vol_gases_only] == 0
+Zero_Gas_Flow[vol_gases_only] = F[6, vol_gases_only] == gas_to_product * F[5, vol_gases_only]
 
 soluble_gases_only = Set(
     container=m,
@@ -332,7 +333,6 @@ soluble_gases_only = Set(
     records=['O', 'N', 'CO2'],
     description="Permanent gases forced to vapor phase"
 )
-
 Soluble_Gas_Flow = Equation(
     container=m,
     name='Soluble_Gas_Flow',
@@ -340,17 +340,16 @@ Soluble_Gas_Flow = Equation(
     description="Gases soluble present in trace liquid phase"
 )
 Soluble_Gas_Flow[soluble_gases_only] = (
-    F[6, soluble_gases_only] == (1 - 0.98) * F[5, soluble_gases_only]
+    F[6, soluble_gases_only] == gas_to_product * F[5, soluble_gases_only]
 )
 
 
 H2O_recovery = Parameter(
     container=m,
     name="H2O_recovery",
-    records=0.99,
+    records=0.999,
     description="H2O recovery in flash unit"
 )
-
 H2O_Recov_Definition = Equation(
     container=m,
     name="H2O_Recov_Definition",
@@ -374,7 +373,7 @@ Split1MB[i] = F[7, i] == F[8, i] + F[9, i]
 HB_PurgeFraction = Parameter(
     container=m,
     name='HB_PurgeFraction',
-    records=0.05,
+    records=0.03,
     description="Purge fraction from HB recycle"
 )
 
@@ -465,7 +464,7 @@ fix_values(F[1, 'NH3'], 0.0)
 
 # Set initial recovery variables
 NH3_recovery.lo[...] = 0.8
-NH3_recovery.up[...] = 0.9
+NH3_recovery.up[...] = 0.9999
 
 # H2O_recovery.lo[...] = 1e-6
 # H2O_recovery.up[...] = 1.0
@@ -487,7 +486,7 @@ ObjFunc = Equation(
     description="Objective Function Definition"
 )
 
-ObjFunc[...] = z == Sum(i, F[1, i] + F[2, i])  # Minimize fresh feed
+ObjFunc[...] = z == Sum(i, F[8, i] + F[2, i])  # Minimize fresh feed
 
 
 # Define the Model

@@ -17,9 +17,6 @@ def null_comp_check(param: Parameter, i: Set):
 def fix_values(var: Variable, val: float):
     """Fixes the lower, upper, and level bounds \
         of a Variable to a specific value."""
-    # var.up[...] = val
-    # var.l[...] = val
-    # var.lo[...] = val
     var.fx[...] = val
     return var
 
@@ -187,8 +184,6 @@ extent = Variable(
     type="positive",
     description="Extent of reaction for each reaction in PFR"
 )
-extent.l[reactions] = 5.0
-
 
 pfr1mb = Equation(
     container=m,
@@ -356,7 +351,7 @@ DehydNH3[...] = F[31, 'NH3'] == F[33, 'NH3']
 sf = Parameter(
     container=m,
     name='sf',
-    records=0.99,
+    records=0.05,
 )
 
 SplitterMB = Equation(
@@ -392,6 +387,11 @@ RecoveryDTEA = Variable(
     name='RecoveryDTEA',
     type="positive"
 )
+
+RecoveryDMEA.fx[...] = 0.9
+RecoveryDDEA.fx[...] = 0.9
+RecoveryDTEA.fx[...] = 0.9
+
 
 DistillationMB = Equation(
     container=m,
@@ -449,22 +449,39 @@ RecoveryTEA3Def = Equation(
 )
 RecoveryTEA3Def[...] = F[39, 'TEA'] == (1-RecoveryDTEA)*F[34, 'TEA']
 
-# PURITIES
-PurityDMEA = Equation(
-    container=m,
-)
-PurityDMEA[...] = F[36, 'MEA'] == 0.99*Sum(i, F[36, i])
 
-PurityDDEA = Equation(
+F_Tot = Variable(
     container=m,
+    name="F_Tot",
+    domain=j,  # per stream
+    type="positive",
+    description="Total molar flowrate in stream j"
 )
-
-PurityDDEA[...] = F[37, 'DEA'] == 0.99*Sum(i, F[37, i])
-
-PurityDTEA = Equation(
+F_Tot_Def = Equation(
     container=m,
+    domain=j,
 )
-PurityDTEA[...] = F[38, 'TEA'] == 0.99*Sum(i, F[38, i])
+F_Tot_Def[j] = F_Tot[j] == Sum(i, F[j, i])
+          
+# # PURITIES
+# PurityDMEA = Equation(
+#     container=m,
+# )
+# PurityDMEA[...] = F[36, 'MEA'] == 0.99*Sum(i, F[36, i])
+
+# PurityDDEA = Equation(
+#     container=m,
+# )
+# PurityDDEA[...] = F[37, 'DEA'] == 0.99*Sum(i, F[37, i])
+
+# PurityDTEA = Equation(
+#     container=m,
+# )
+# PurityDTEA[...] = F[38, 'TEA'] == 0.8*Sum(i, F[38, i])
+
+# F.fx[36, 'MEA'] = F_Tot[36]*0.9
+# F.fx[37, 'DEA'] = F_Tot[37]*0.9
+# F.fx[38, 'TEA'] = F_Tot[38]*0.9
 
 # ===============================================================================#
 #                             || INLET REQUIREMENTS ||
@@ -485,13 +502,14 @@ fix_values(F[23, 'DEA'], 0.0)
 
 # Set initial recovery variables
 # RecoveryDMEA.lo[...] = 0.8
-RecoveryDMEA.up[...] = 0.98
+RecoveryDMEA.up[...] = 0.999
 
 # RecoveryDDEA.lo[...] = 0.8
-RecoveryDDEA.up[...] = 0.98
+RecoveryDDEA.up[...] = 0.999
 
 # RecoveryDTEA.lo[...] = 0.8
-RecoveryDTEA.up[...] = 0.98
+RecoveryDTEA.up[...] = 0.999
+
 
 # ===============================================================================#
 #                            || MODEL SETUP AND SOLVE ||
@@ -509,7 +527,7 @@ ObjFunc = Equation(
     description="Objective Function Definition"
 )
 
-ObjFunc[...] = z == Sum(reactions, extent[reactions])
+ObjFunc[...] = z == extent[3]
 
 # Define the Model
 EA_Prodution_Model = Model(

@@ -187,8 +187,6 @@ extent = Variable(
     type="positive",
     description="Extent of reaction for each reaction in PFR"
 )
-extent.l[reactions] = 5.0
-
 
 pfr1mb = Equation(
     container=m,
@@ -204,19 +202,17 @@ SPCdef[...] = Sum(reactions, extent[reactions]) == SPC_EO * (F[27, 'EO'] + F[28,
 S_MEAdef = Equation(
     container=m,
 )
-S_MEAdef[...] = (extent[1]-extent[2]) == (extent[1]+extent[2]+extent[3])*S_MEA
+S_MEAdef[...] = (extent[1]-extent[2]) == (extent[1]+extent[2]+extent[3]) * S_MEA
 
 S_DEAdef = Equation(
     container=m,
 )
+S_DEAdef[...] = 2*(extent[2]-extent[3]) == (extent[1]+extent[2]+extent[3]) * S_DEA
 
-S_DEAdef[...] = (extent[2]-extent[3]) == (extent[1]+extent[2]+extent[3])*S_DEA
-
-S_TEAdef = Equation(
-    container=m,
+SumEAs = Equation(
+    container = m,
 )
-
-S_TEAdef[...] = (extent[3]) == (extent[1]+extent[2]+extent[3])*S_TEA
+SumEAs[...] = SPC_EO * (F[27, 'EO'] + F[28, 'EO']) == F[29, 'MEA'] + F[29, 'DEA'] + F[29, 'TEA']
 
 NH3EOratio = Equation(
     container=m,
@@ -247,7 +243,6 @@ S28FeedRatio = Equation(
 )
 
 S28FeedRatio[...] = F[28, 'EO'] == 99 * (F[28, 'H2O'])
-
 
 # ===============================================================================#
 #                              ||   Ammonia Stripper (29->30+31)||

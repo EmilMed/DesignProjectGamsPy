@@ -22,7 +22,6 @@ def fix_values(var: Variable, val: float):
     var.lo[...] = val
     return var
 
-
 # Define model container
 m = Container()
 

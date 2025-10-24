@@ -372,19 +372,19 @@ Splitratio[i] = sf * F[33, i] == F[35, i]
 RecoveryDMEA = Parameter(
     container=m,
     name='RecoveryDMEA',
-    records = 0.99
+    records = 0.999999
 )
 
 RecoveryDDEA = Parameter(
     container=m,
     name='RecoveryDDEA',
-    records = 0.99
+    records = 0.999999
 )
 
 RecoveryDTEA = Parameter(
     container=m,
     name='RecoveryDTEA',
-    records = 0.99
+    records = 0.999999
 )
 
 DistillationMB = Equation(

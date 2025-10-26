@@ -134,7 +134,7 @@ S11_CO2_Spec = Equation(
     description="Stream 11 is pure CO2 feed"
 )
 # F_11,i = 0 if i != CO2, NH3
-S11_CO2_Spec[S11_NoCO2] = F['11', S11_NoCO2] == 0.0  
+S11_CO2_Spec[S11_NoCO2] = F['11', S11_NoCO2] == 0.0
 
 
 # 3. SETgases Only in stream 12 (4 SETgases Only in stream 12)
@@ -229,7 +229,7 @@ ExtentDef_R2 = Equation(
 ExtentDef_R2[...] = extent['2'] == OC_AC * (F['16', 'AC'] + extent['1'])
 
 # NEW - NH3:CO2 Molar Ratio in Feed Specification
-R_NH3_CO2_Feed = 3 # Molar ratio of NH3 to CO2 in feeds to loop
+R_NH3_CO2_Feed = 3  # Molar ratio of NH3 to CO2 in feeds to loop
 
 NH3_CO2_FeedSpec = Equation(
     container=m,

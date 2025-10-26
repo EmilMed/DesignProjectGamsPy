@@ -22,8 +22,10 @@ def fix_values(var: Variable, val: float):
     var.lo[...] = val
     return var
 
+
 # Define model container
 m = Container()
+
 
 # ===============================================================================#
 #                          || Base Information ||
@@ -208,7 +210,7 @@ v_1 = Parameter(
 sp_conv_hb = Parameter(
     container=m,
     name='sp_conv_hb',
-    records=0.12,  # 12% conversion in Haber-Bosch reactor
+    records=0.142,  # 14.2% conversion in Haber-Bosch reactor
     description="Specified conversion in Haber-Bosch reactor"
 )
 
@@ -265,7 +267,7 @@ NH3_Purity_Min = Parameter(
 NH3_Purity_Max = Parameter(
     container=m,
     name='Purity_Max',
-    records=0.996,
+    records=0.999,
     description="Maximum allowed liquid NH3 purity"
 )
 
@@ -287,19 +289,20 @@ NH3_Purity_Upper_Bound[...] = F[6, 'NH3'] / Sum(i, F[6, i]) <= NH3_Purity_Max
 
 
 # NH3 Recovery Definition
-NH3_recovery = Variable(
-    container=m,
-    name="NH3_recovery",
-    type="positive",
-    description="NH3 recovery in flash unit"
-)
+# NH3_recovery = Variable(
+#     container=m,
+#     name="NH3_recovery",
+#     type="positive",
+#     description="NH3 recovery in flash unit"
+# )
+# NH3_recovery.fx[...] = 0.72
 
 NH3_Recov_Definition = Equation(
     container=m,
     name="NH3_Recov_Definition",
     description="Mass balance over Flash Separator"
 )
-NH3_Recov_Definition[...] = F[6, 'NH3'] == NH3_recovery * F[5, 'NH3']
+NH3_Recov_Definition[...] = F[6, 'NH3'] == 0.99 * F[5, 'NH3']
 
 
 gas_to_product = Variable(
@@ -323,7 +326,8 @@ Zero_Gas_Flow = Equation(
     domain=[vol_gases_only],
     description="Permanent gases forced to vapor phase (F[6,i] == 0)"
 )
-Zero_Gas_Flow[vol_gases_only] = F[6, vol_gases_only] == gas_to_product * F[5, vol_gases_only]
+Zero_Gas_Flow[vol_gases_only] = F[6, vol_gases_only] \
+                              == gas_to_product * F[5, vol_gases_only]
 
 soluble_gases_only = Set(
     container=m,
@@ -462,8 +466,8 @@ fix_values(F[2, 'NH3'], 0.0)
 fix_values(F[1, 'NH3'], 0.0)
 
 # Set initial recovery variables
-NH3_recovery.lo[...] = 0.8
-NH3_recovery.up[...] = 0.9999
+# NH3_recovery.lo[...] = 0.8
+# NH3_recovery.up[...] = 0.9999
 
 # H2O_recovery.lo[...] = 1e-6
 # H2O_recovery.up[...] = 1.0
